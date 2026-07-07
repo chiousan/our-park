@@ -1,0 +1,285 @@
+﻿<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>我們的樂園 v0</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; height: 100%; overscroll-behavior: none; }
+  body {
+    font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+    background: #7ec850; /* 故意很普通的綠色，等首席畫家來救 */
+    touch-action: manipulation;
+    user-select: none; -webkit-user-select: none;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  header {
+    width: 100%; max-width: 720px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px;
+  }
+  h1 { font-size: 22px; margin: 0; color: #fff; text-shadow: 1px 2px 0 #4a7a2e; }
+  .coins {
+    background: #fff; border: 3px solid #e0a800; border-radius: 999px;
+    padding: 6px 16px; font-size: 20px; font-weight: bold; color: #7a5c00;
+    min-width: 110px; text-align: center;
+  }
+  #map {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    width: calc(100% - 20px); max-width: 720px;
+    padding: 10px;
+    background: #5da03c; border-radius: 16px;
+    margin: 4px 10px;
+  }
+  .tile {
+    aspect-ratio: 1;
+    background: #8fd45f;
+    border: 2px dashed #6db648;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: min(9vw, 52px);
+    position: relative;
+    cursor: pointer;
+  }
+  .tile.built { border: 2px solid #4a7a2e; background: #a8e07a; }
+  .tile .timer {
+    position: absolute; bottom: 2px; left: 0; right: 0;
+    font-size: 11px; color: #33551f; text-align: center; font-weight: bold;
+  }
+  .tile .money {
+    position: absolute; top: -6px; right: -2px; font-size: 24px;
+    animation: bounce 0.8s infinite alternate;
+  }
+  @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+  .fly {
+    position: fixed; font-size: 22px; font-weight: bold; color: #ffd700;
+    text-shadow: 1px 1px 0 #7a5c00; pointer-events: none;
+    animation: fly 0.9s ease-out forwards; z-index: 50;
+  }
+  @keyframes fly { to { transform: translateY(-60px); opacity: 0; } }
+  footer {
+    width: 100%; max-width: 720px; padding: 8px 14px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    color: #eaffdc; font-size: 13px;
+  }
+  footer button {
+    font: inherit; font-size: 12px; color: #eaffdc;
+    background: none; border: 1px solid #a5cf8a; border-radius: 8px; padding: 4px 10px;
+  }
+  /* 對話面板 */
+  #panel {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+  }
+  #panel.show { display: flex; }
+  .dialog {
+    background: #fffbe8; border-radius: 18px; padding: 22px;
+    width: min(86vw, 340px); text-align: center;
+    border: 4px solid #e0a800;
+  }
+  .dialog .big { font-size: 56px; }
+  .dialog h2 { margin: 6px 0 4px; font-size: 20px; color: #5c4400; }
+  .dialog p { margin: 4px 0 16px; font-size: 15px; color: #7a6a30; }
+  .dialog button {
+    font: inherit; font-size: 18px; font-weight: bold;
+    border: none; border-radius: 12px; padding: 12px 22px; margin: 0 6px;
+    cursor: pointer;
+  }
+  .buy { background: #ffc93c; color: #5c4400; }
+  .buy:disabled { background: #ddd; color: #999; }
+  .cancel { background: #e8e2cc; color: #777; }
+  #toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,.7); color: #fff; border-radius: 999px;
+    padding: 8px 20px; font-size: 15px; z-index: 200;
+    opacity: 0; transition: opacity .3s; pointer-events: none;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎪 我們的樂園</h1>
+  <div class="coins">💰 <span id="coinNum">0</span></div>
+</header>
+
+<div id="map"></div>
+
+<footer>
+  <div>👷 v0 地基版 — 點空地蓋設施，💰出現時點它收金幣</div>
+  <button id="resetBtn">重新開始</button>
+</footer>
+
+<div id="panel">
+  <div class="dialog">
+    <div class="big" id="dlgIcon">🎠</div>
+    <h2 id="dlgTitle">蓋旋轉木馬？</h2>
+    <p id="dlgText"></p>
+    <button class="buy" id="dlgOk">蓋！</button>
+    <button class="cancel" id="dlgCancel">先不要</button>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ===== 設定（數值設計師：哥哥，之後用需求卡改這裡）=====
+const COLS = 7, ROWS = 5;
+const START_COINS = 100;
+const FACILITY = {
+  carousel: { name: '旋轉木馬', icon: '🎠', cost: 50, earn: 10, waitSec: 20 }
+};
+const SAVE_KEY = 'park-save-v1';
+
+// ===== 遊戲狀態 =====
+let state = null;
+
+function newGame() {
+  return {
+    coins: START_COINS,
+    tiles: Array(COLS * ROWS).fill(null) // null 或 {type, last}
+  };
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (Array.isArray(s.tiles) && s.tiles.length === COLS * ROWS && typeof s.coins === 'number') return s;
+    }
+  } catch (e) {}
+  return newGame();
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {} }
+
+// ===== 畫面 =====
+const mapEl = document.getElementById('map');
+const coinEl = document.getElementById('coinNum');
+const tileEls = [];
+
+function buildMap() {
+  mapEl.innerHTML = '';
+  tileEls.length = 0;
+  for (let i = 0; i < COLS * ROWS; i++) {
+    const el = document.createElement('div');
+    el.className = 'tile';
+    el.addEventListener('click', () => tapTile(i));
+    mapEl.appendChild(el);
+    tileEls.push(el);
+  }
+}
+
+function render() {
+  coinEl.textContent = state.coins;
+  const now = Date.now();
+  state.tiles.forEach((t, i) => {
+    const el = tileEls[i];
+    if (!t) {
+      el.className = 'tile';
+      el.innerHTML = '';
+      return;
+    }
+    const f = FACILITY[t.type];
+    const left = Math.ceil((t.last + f.waitSec * 1000 - now) / 1000);
+    el.className = 'tile built';
+    if (left <= 0) {
+      el.innerHTML = f.icon + '<span class="money">💰</span>';
+    } else {
+      el.innerHTML = f.icon + '<span class="timer">⏳' + left + '</span>';
+    }
+  });
+}
+
+// ===== 互動 =====
+const panel = document.getElementById('panel');
+const dlgText = document.getElementById('dlgText');
+const dlgOk = document.getElementById('dlgOk');
+let pendingTile = -1;
+
+function tapTile(i) {
+  const t = state.tiles[i];
+  if (!t) { // 空地 → 問要不要蓋
+    const f = FACILITY.carousel;
+    pendingTile = i;
+    dlgText.textContent = '要花 ' + f.cost + ' 金幣。蓋好後每 ' + f.waitSec + ' 秒生 ' + f.earn + ' 金幣。（你現在有 ' + state.coins + '）';
+    dlgOk.disabled = state.coins < f.cost;
+    dlgOk.textContent = state.coins < f.cost ? '錢不夠😢' : '蓋！';
+    panel.classList.add('show');
+    return;
+  }
+  const f = FACILITY[t.type];
+  const now = Date.now();
+  if (now - t.last >= f.waitSec * 1000) { // 收成！
+    state.coins += f.earn;
+    t.last = now;
+    save();
+    render();
+    flyCoin(tileEls[i], '+' + f.earn);
+  } else {
+    const left = Math.ceil((t.last + f.waitSec * 1000 - now) / 1000);
+    toast('還要等 ' + left + ' 秒喔 ⏳');
+  }
+}
+
+dlgOk.addEventListener('click', () => {
+  const f = FACILITY.carousel;
+  if (pendingTile >= 0 && !state.tiles[pendingTile] && state.coins >= f.cost) {
+    state.coins -= f.cost;
+    state.tiles[pendingTile] = { type: 'carousel', last: Date.now() };
+    save();
+    render();
+    toast('🎠 蓋好了！等它生金幣吧');
+  }
+  panel.classList.remove('show');
+  pendingTile = -1;
+});
+document.getElementById('dlgCancel').addEventListener('click', () => {
+  panel.classList.remove('show');
+  pendingTile = -1;
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('確定要把整個樂園拆掉重來嗎？（存檔會消失！）')) {
+    state = newGame();
+    save();
+    render();
+    toast('新的空地！重新開始 🌱');
+  }
+});
+
+// 金幣飛出動畫
+function flyCoin(fromEl, text) {
+  const r = fromEl.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'fly';
+  el.textContent = '💰' + text;
+  el.style.left = (r.left + r.width / 2 - 20) + 'px';
+  el.style.top = (r.top) + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 900);
+}
+
+// 提示訊息
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.opacity = 1;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.opacity = 0; }, 1600);
+}
+
+// ===== 啟動 =====
+state = load();
+buildMap();
+render();
+setInterval(render, 500); // 每半秒更新倒數與💰
+</script>
+</body>
+</html>
+
