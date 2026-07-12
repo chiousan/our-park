@@ -5,13 +5,13 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>我們的樂園 v0</title>
+<title>Vacation Land</title>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; height: 100%; overscroll-behavior: none; }
   body {
     font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
-    background: #7ec850; /* 故意很普通的綠色，等首席畫家來救 */
+    background: #7ec850; /* 等首席畫家的草地圖來換 */
     touch-action: manipulation;
     user-select: none; -webkit-user-select: none;
     display: flex; flex-direction: column; align-items: center;
@@ -35,6 +35,7 @@
     padding: 10px;
     background: #5da03c; border-radius: 16px;
     margin: 4px 10px;
+    position: relative;
   }
   .tile {
     aspect-ratio: 1;
@@ -46,14 +47,30 @@
     position: relative;
     cursor: pointer;
   }
-  .tile.built { border: 2px solid #4a7a2e; background: #a8e07a; }
-  .tile .timer {
-    position: absolute; bottom: 2px; left: 0; right: 0;
-    font-size: 11px; color: #33551f; text-align: center; font-weight: bold;
+  .fac {
+    background: #a8e07a;
+    border: 2px solid #4a7a2e;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: min(9vw, 52px);
+    position: relative;
+    cursor: pointer;
+    z-index: 2;
   }
-  .tile .money {
-    position: absolute; top: -6px; right: -2px; font-size: 24px;
-    animation: bounce 0.8s infinite alternate;
+  .fac.big { font-size: min(19vw, 110px); }
+  .fac .icon { display: inline-block; }
+  .fac.coaster .icon { animation: ride 1.6s ease-in-out infinite; }
+  @keyframes ride {
+    0%, 100% { transform: translateY(0) rotate(-4deg); }
+    50% { transform: translateY(-7px) rotate(4deg); }
+  }
+  .fac .timer {
+    position: absolute; bottom: 3px; left: 0; right: 0;
+    font-size: 12px; color: #33551f; text-align: center; font-weight: bold;
+  }
+  .fac .money {
+    position: absolute; top: -6px; right: -2px; font-size: 26px;
+    animation: bounce 0.8s infinite alternate; z-index: 3;
   }
   @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-6px); } }
   .fly {
@@ -71,28 +88,38 @@
     font: inherit; font-size: 12px; color: #eaffdc;
     background: none; border: 1px solid #a5cf8a; border-radius: 8px; padding: 4px 10px;
   }
-  /* 對話面板 */
+  /* 商店面板 */
   #panel {
     position: fixed; inset: 0; background: rgba(0,0,0,.45);
     display: none; align-items: center; justify-content: center; z-index: 100;
   }
   #panel.show { display: flex; }
   .dialog {
-    background: #fffbe8; border-radius: 18px; padding: 22px;
-    width: min(86vw, 340px); text-align: center;
+    background: #fffbe8; border-radius: 18px; padding: 18px;
+    width: min(88vw, 380px); text-align: center;
     border: 4px solid #e0a800;
   }
-  .dialog .big { font-size: 56px; }
-  .dialog h2 { margin: 6px 0 4px; font-size: 20px; color: #5c4400; }
-  .dialog p { margin: 4px 0 16px; font-size: 15px; color: #7a6a30; }
-  .dialog button {
-    font: inherit; font-size: 18px; font-weight: bold;
-    border: none; border-radius: 12px; padding: 12px 22px; margin: 0 6px;
-    cursor: pointer;
+  .dialog h2 { margin: 2px 0 10px; font-size: 20px; color: #5c4400; }
+  .shopitem {
+    display: flex; align-items: center; gap: 12px;
+    background: #fff; border: 2px solid #eedc9a; border-radius: 12px;
+    padding: 10px 12px; margin-bottom: 10px; text-align: left;
   }
-  .buy { background: #ffc93c; color: #5c4400; }
-  .buy:disabled { background: #ddd; color: #999; }
-  .cancel { background: #e8e2cc; color: #777; }
+  .shopitem .bigicon { font-size: 42px; }
+  .shopitem .info { flex: 1; }
+  .shopitem .info b { font-size: 17px; color: #5c4400; }
+  .shopitem .info span { display: block; font-size: 12.5px; color: #96824a; }
+  .shopitem button {
+    font: inherit; font-size: 16px; font-weight: bold;
+    border: none; border-radius: 10px; padding: 10px 14px;
+    background: #ffc93c; color: #5c4400; cursor: pointer; white-space: nowrap;
+  }
+  .shopitem button:disabled { background: #e5e0d0; color: #a89; }
+  .dialog .cancel {
+    font: inherit; font-size: 16px; font-weight: bold;
+    background: #e8e2cc; color: #777; border: none; border-radius: 10px;
+    padding: 10px 24px; margin-top: 2px; cursor: pointer;
+  }
   #toast {
     position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
     background: rgba(0,0,0,.7); color: #fff; border-radius: 999px;
@@ -104,45 +131,44 @@
 </head>
 <body>
 <header>
-  <h1>🎪 我們的樂園</h1>
+  <h1>🎢 Vacation Land</h1>
   <div class="coins">💰 <span id="coinNum">0</span></div>
 </header>
 
 <div id="map"></div>
 
 <footer>
-  <div>👷 v0 地基版 — 點空地蓋設施，💰出現時點它收金幣</div>
+  <div>👷 v1 施工中 — 點空地開商店，💰出現時點設施收金幣</div>
   <button id="resetBtn">重新開始</button>
 </footer>
 
 <div id="panel">
   <div class="dialog">
-    <div class="big" id="dlgIcon">🎠</div>
-    <h2 id="dlgTitle">蓋旋轉木馬？</h2>
-    <p id="dlgText"></p>
-    <button class="buy" id="dlgOk">蓋！</button>
+    <h2>🏗️ 要蓋什麼？</h2>
+    <div id="shopList"></div>
     <button class="cancel" id="dlgCancel">先不要</button>
   </div>
 </div>
 <div id="toast"></div>
 
 <script>
-// ===== 設定（數值設計師：哥哥，之後用需求卡改這裡）=====
+// ===== 設定（數值由設計師需求卡決定）=====
 const COLS = 7, ROWS = 5;
 const START_COINS = 100;
 const FACILITY = {
-  carousel: { name: '旋轉木馬', icon: '🎠', cost: 50, earn: 10, waitSec: 20 }
+  carousel: { name: '旋轉木馬', icon: '🎠', cost: 50,  earn: 10, waitSec: 20, w: 1, h: 1 },
+  // REQ-001（哥哥 2026-07-09）：100 金幣才能買，每 10 秒生一次、每次 20 金幣
+  // 施工隊補充：雲霄飛車很大，佔 2×2 = 4 格土地
+  coaster:  { name: '雲霄飛車', icon: '🎢', cost: 100, earn: 20, waitSec: 10, w: 2, h: 2 }
 };
 const SAVE_KEY = 'park-save-v1';
 
 // ===== 遊戲狀態 =====
+// tiles[i] = null（空地）| {type, last}（設施左上角）| {ref: 錨點index}（大設施佔用格）
 let state = null;
 
 function newGame() {
-  return {
-    coins: START_COINS,
-    tiles: Array(COLS * ROWS).fill(null) // null 或 {type, last}
-  };
+  return { coins: START_COINS, tiles: Array(COLS * ROWS).fill(null) };
 }
 
 function load() {
@@ -161,6 +187,7 @@ function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
 const mapEl = document.getElementById('map');
 const coinEl = document.getElementById('coinNum');
 const tileEls = [];
+const facEls = {}; // 錨點index -> 設施元素
 
 function buildMap() {
   mapEl.innerHTML = '';
@@ -168,76 +195,131 @@ function buildMap() {
   for (let i = 0; i < COLS * ROWS; i++) {
     const el = document.createElement('div');
     el.className = 'tile';
-    el.addEventListener('click', () => tapTile(i));
+    el.style.gridRow = Math.floor(i / COLS) + 1;
+    el.style.gridColumn = (i % COLS) + 1;
+    el.addEventListener('click', () => tapEmpty(i));
     mapEl.appendChild(el);
     tileEls.push(el);
   }
+}
+
+function ensureFacEl(i) {
+  if (facEls[i]) return facEls[i];
+  const t = state.tiles[i];
+  const f = FACILITY[t.type];
+  const el = document.createElement('div');
+  el.className = 'fac ' + t.type + (f.w > 1 || f.h > 1 ? ' big' : '');
+  const r = Math.floor(i / COLS), c = i % COLS;
+  el.style.gridRow = (r + 1) + ' / span ' + f.h;
+  el.style.gridColumn = (c + 1) + ' / span ' + f.w;
+  el.addEventListener('click', () => tapFacility(i));
+  mapEl.appendChild(el);
+  facEls[i] = el;
+  return el;
 }
 
 function render() {
   coinEl.textContent = state.coins;
   const now = Date.now();
   state.tiles.forEach((t, i) => {
-    const el = tileEls[i];
-    if (!t) {
-      el.className = 'tile';
-      el.innerHTML = '';
-      return;
-    }
+    if (!t || t.ref !== undefined) return; // 空地與佔用格不畫
     const f = FACILITY[t.type];
+    const el = ensureFacEl(i);
     const left = Math.ceil((t.last + f.waitSec * 1000 - now) / 1000);
-    el.className = 'tile built';
     if (left <= 0) {
-      el.innerHTML = f.icon + '<span class="money">💰</span>';
+      el.innerHTML = '<span class="icon">' + f.icon + '</span><span class="money">💰</span>';
     } else {
-      el.innerHTML = f.icon + '<span class="timer">⏳' + left + '</span>';
+      el.innerHTML = '<span class="icon">' + f.icon + '</span><span class="timer">⏳' + left + '</span>';
     }
   });
 }
 
+function rebuildFacEls() {
+  Object.values(facEls).forEach(el => el.remove());
+  for (const k in facEls) delete facEls[k];
+}
+
+// ===== 佔地檢查 =====
+function fitCells(anchor, f) {
+  const r = Math.floor(anchor / COLS), c = anchor % COLS;
+  if (r + f.h > ROWS || c + f.w > COLS) return null;
+  const cells = [];
+  for (let dr = 0; dr < f.h; dr++) {
+    for (let dc = 0; dc < f.w; dc++) {
+      const idx = (r + dr) * COLS + (c + dc);
+      if (state.tiles[idx]) return null;
+      cells.push(idx);
+    }
+  }
+  return cells;
+}
+
 // ===== 互動 =====
 const panel = document.getElementById('panel');
-const dlgText = document.getElementById('dlgText');
-const dlgOk = document.getElementById('dlgOk');
+const shopList = document.getElementById('shopList');
 let pendingTile = -1;
 
-function tapTile(i) {
-  const t = state.tiles[i];
-  if (!t) { // 空地 → 問要不要蓋
-    const f = FACILITY.carousel;
-    pendingTile = i;
-    dlgText.textContent = '要花 ' + f.cost + ' 金幣。蓋好後每 ' + f.waitSec + ' 秒生 ' + f.earn + ' 金幣。（你現在有 ' + state.coins + '）';
-    dlgOk.disabled = state.coins < f.cost;
-    dlgOk.textContent = state.coins < f.cost ? '錢不夠😢' : '蓋！';
-    panel.classList.add('show');
-    return;
+function tapEmpty(i) {
+  if (state.tiles[i]) return; // 被大設施蓋住的格子（保險）
+  pendingTile = i;
+  shopList.innerHTML = '';
+  Object.keys(FACILITY).forEach(key => {
+    const f = FACILITY[key];
+    const cells = fitCells(i, f);
+    const affordable = state.coins >= f.cost;
+    const item = document.createElement('div');
+    item.className = 'shopitem';
+    let reason = '';
+    if (!cells) reason = '這裡放不下（要 ' + f.w + '×' + f.h + ' 空地）';
+    else if (!affordable) reason = '錢不夠😢';
+    item.innerHTML =
+      '<div class="bigicon">' + f.icon + '</div>' +
+      '<div class="info"><b>' + f.name + '</b>' +
+      '<span>💰' + f.cost + '｜每 ' + f.waitSec + ' 秒生 ' + f.earn + ' 金幣｜佔 ' + f.w + '×' + f.h + ' 格</span>' +
+      (reason ? '<span>⚠️ ' + reason + '</span>' : '') +
+      '</div>';
+    const btn = document.createElement('button');
+    btn.textContent = '蓋！';
+    btn.disabled = !cells || !affordable;
+    btn.addEventListener('click', () => buy(key));
+    item.appendChild(btn);
+    shopList.appendChild(item);
+  });
+  panel.classList.add('show');
+}
+
+function buy(key) {
+  const f = FACILITY[key];
+  const cells = pendingTile >= 0 ? fitCells(pendingTile, f) : null;
+  if (cells && state.coins >= f.cost) {
+    state.coins -= f.cost;
+    state.tiles[pendingTile] = { type: key, last: Date.now() };
+    cells.forEach(idx => { if (idx !== pendingTile) state.tiles[idx] = { ref: pendingTile }; });
+    save();
+    render();
+    toast(f.icon + ' ' + f.name + '蓋好了！等它生金幣吧');
   }
+  panel.classList.remove('show');
+  pendingTile = -1;
+}
+
+function tapFacility(i) {
+  const t = state.tiles[i];
+  if (!t || t.ref !== undefined) return;
   const f = FACILITY[t.type];
   const now = Date.now();
-  if (now - t.last >= f.waitSec * 1000) { // 收成！
+  if (now - t.last >= f.waitSec * 1000) {
     state.coins += f.earn;
     t.last = now;
     save();
     render();
-    flyCoin(tileEls[i], '+' + f.earn);
+    flyCoin(facEls[i], '+' + f.earn);
   } else {
     const left = Math.ceil((t.last + f.waitSec * 1000 - now) / 1000);
     toast('還要等 ' + left + ' 秒喔 ⏳');
   }
 }
 
-dlgOk.addEventListener('click', () => {
-  const f = FACILITY.carousel;
-  if (pendingTile >= 0 && !state.tiles[pendingTile] && state.coins >= f.cost) {
-    state.coins -= f.cost;
-    state.tiles[pendingTile] = { type: 'carousel', last: Date.now() };
-    save();
-    render();
-    toast('🎠 蓋好了！等它生金幣吧');
-  }
-  panel.classList.remove('show');
-  pendingTile = -1;
-});
 document.getElementById('dlgCancel').addEventListener('click', () => {
   panel.classList.remove('show');
   pendingTile = -1;
@@ -247,12 +329,12 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   if (confirm('確定要把整個樂園拆掉重來嗎？（存檔會消失！）')) {
     state = newGame();
     save();
+    rebuildFacEls();
     render();
     toast('新的空地！重新開始 🌱');
   }
 });
 
-// 金幣飛出動畫
 function flyCoin(fromEl, text) {
   const r = fromEl.getBoundingClientRect();
   const el = document.createElement('div');
@@ -264,7 +346,6 @@ function flyCoin(fromEl, text) {
   setTimeout(() => el.remove(), 900);
 }
 
-// 提示訊息
 let toastTimer = null;
 function toast(msg) {
   const el = document.getElementById('toast');
@@ -278,7 +359,7 @@ function toast(msg) {
 state = load();
 buildMap();
 render();
-setInterval(render, 500); // 每半秒更新倒數與💰
+setInterval(render, 500);
 </script>
 </body>
 </html>
